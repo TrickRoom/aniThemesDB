@@ -1,4 +1,4 @@
-import sys,requests as rq,series
+import sys,requests as rq, series as sr, json
 from bs4 import BeautifulSoup
 
 def main():
@@ -6,12 +6,25 @@ def main():
     links = getLinks()
     # for link in links:
     #     print(link)
-    if(True):
-        html = getHTML(links[0])
+    # if(True):
+    #     html = getHTML(links[7])
+    #     series = getSeries(html)
+    #     parsed = parseSeries(series)
+    #
+    #     # print(jsonDefault(parsed[213]))
+    #     # print(json.dumps(parsed[213], default=jsonDefault, indent=4, separators=(',', ': ')))
+    #
+    #     #string()
+    #     populateDb(parsed)
+
+    parsed = []
+    links = getLinks()
+    for link in links:
+        print(link)
+        html = getHTML(link)
         series = getSeries(html)
-        parseSeries(series)
-
-
+        parsed.append(parseSeries(series))
+    populateDb(parsed)
 
 #The get request
 def getHTML(url):
@@ -21,7 +34,7 @@ def getHTML(url):
     headers = {
         "User-Agent": "Testing 1.0",
     }
-    r = rq.get(url, headers={"User-Agent": "Testing 1.0"})
+    r = rq.get(url, headers={"User-Agent": "aniThemes 1.0"})
     return r.text
 
 def getLinks():
@@ -42,7 +55,8 @@ def getSeries(html):
     for h in content.find_all("h3"):
         series = [] #temp array to store relevant HTML
         series.append(h) #Name
-        if h.next_sibling.next_sibling.name == "p":
+        if h.next_sibling.next_sibling.name == "p" and h.next_sibling.next_sibling.find("strong")!=None:
+            #print(h.next_sibling.next_sibling)
             series.append(h.next_sibling.next_sibling) #P tag
             series.append(h.next_sibling.next_sibling.next_sibling.next_sibling) #Table tag
         else:
@@ -53,24 +67,68 @@ def getSeries(html):
 
 #Parses the HTML array and returns array of series, links, episodes, and notes
 def parseSeries(htmlArr):
+    seriesList = []
     for s in htmlArr:
         if len(s) == 3:
             title = s[0].contents[0].contents[0]
             year = s[2].contents[0]
-
-
+            songs = parseTable(s[1])
+            seriesList.append(sr.Series(title,"",year,songs))
         else:
             title = s[0].contents[0].contents[0]
             altTitle = s[1].contents[0].contents[0]
             year = s[3].contents[0]
+            songs = parseTable(s[2])
+            seriesList.append(sr.Series(title,altTitle,year,songs))
+    return seriesList
 
 #figure out table parsing now
 
+def parseTable(table): #This code is horrible...
+    title = ""
+    episodes = ""
+    notes = ""
+    links = []
+    linkTitles = []
+    songs = []
+    for row in table.find_all('tr'):
+        columns = row.find_all('td')
+        if len(columns)>1: #avoid the empty row (the header row)
+            #print(columns)
+            if len(columns[0].contents)>=1: #if the theme title exists)
+                if title!="":
+                    songs.append(sr.Song(title,linkTitles,links,episodes,notes))
+                    title = ""
+                    episodes = ""
+                    notes = ""
+                    links = []
+                    linkTitles = []
+                title = columns[0].contents[0]
+            themeLink = columns[1].find('a', href=True)
+            if themeLink!=None: #error check because of literally one instance in the data
+                links.append(columns[1].find('a', href=True)['href'])
+                linkTitles.append(columns[1].find('a', href=True).contents[0])
+                if(len(columns[2].contents)>=1):
+                    episodes = columns[2].contents[0]
 
+                try:
+                    if (len(columns[3].contents) >= 1):
+                        notes = str(columns[3].contents[0])
+                except IndexError:
+                    #print("Hit that one un-formatted box in Mob Psycho 100, year 2016")
+                    print("Hit an improperly formatted box.")
 
+    songs.append(sr.Song(title, linkTitles, links, episodes, notes))
+    return songs
 #Creates organized json database
-def populateDb():
-    pass
+def populateDb(parsedList):
+    db = json.dumps(parsedList, default=jsonDefault, indent=4, separators=(',', ': '))
+    outfile = open('data.json', 'w')
+    outfile.write(db)
+    outfile.close
+
+def jsonDefault(object):
+    return object.__dict__
 
 if __name__ == '__main__':
     sys.exit(main())
