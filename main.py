@@ -2,21 +2,6 @@ import sys,requests as rq, series as sr, json
 from bs4 import BeautifulSoup
 
 def main():
-    """Main entry point for the script."""
-    links = getLinks()
-    # for link in links:
-    #     print(link)
-    # if(True):
-    #     html = getHTML(links[7])
-    #     series = getSeries(html)
-    #     parsed = parseSeries(series)
-    #
-    #     # print(jsonDefault(parsed[213]))
-    #     # print(json.dumps(parsed[213], default=jsonDefault, indent=4, separators=(',', ': ')))
-    #
-    #     #string()
-    #     populateDb(parsed)
-
     parsed = []
     links = getLinks()
     for link in links:
@@ -32,7 +17,7 @@ def getHTML(url):
         url = "https://www.reddit.com/r/animethemes/wiki/year_index"
 
     headers = {
-        "User-Agent": "Testing 1.0",
+        "User-Agent": "AniThemes 1.1",
     }
     r = rq.get(url, headers={"User-Agent": "aniThemes 1.0"})
     return r.text
@@ -56,7 +41,6 @@ def getSeries(html):
         series = [] #temp array to store relevant HTML
         series.append(h) #Name
         if h.next_sibling.next_sibling.name == "p" and h.next_sibling.next_sibling.find("strong")!=None:
-            #print(h.next_sibling.next_sibling)
             series.append(h.next_sibling.next_sibling) #P tag
             series.append(h.next_sibling.next_sibling.next_sibling.next_sibling) #Table tag
         else:
@@ -82,8 +66,6 @@ def parseSeries(htmlArr):
             seriesList.append(sr.Series(title,altTitle,year,songs))
     return seriesList
 
-#figure out table parsing now
-
 def parseTable(table): #This code is horrible...
     title = ""
     episodes = ""
@@ -94,8 +76,7 @@ def parseTable(table): #This code is horrible...
     for row in table.find_all('tr'):
         columns = row.find_all('td')
         if len(columns)>1: #avoid the empty row (the header row)
-            #print(columns)
-            if len(columns[0].contents)>=1: #if the theme title exists)
+            if len(columns[0].contents)>=1: #if the theme title exists
                 if title!="":
                     songs.append(sr.Song(title,linkTitles,links,episodes,notes))
                     title = ""
@@ -115,11 +96,12 @@ def parseTable(table): #This code is horrible...
                     if (len(columns[3].contents) >= 1):
                         notes = str(columns[3].contents[0])
                 except IndexError:
-                    #print("Hit that one un-formatted box in Mob Psycho 100, year 2016")
+                    #print("Hit that one improperly formatted box in Mob Psycho 100, year 2016")
                     print("Hit an improperly formatted box.")
 
     songs.append(sr.Song(title, linkTitles, links, episodes, notes))
     return songs
+
 #Creates organized json database
 def populateDb(parsedList):
     db = json.dumps(parsedList, default=jsonDefault, indent=4, separators=(',', ': '))
@@ -132,9 +114,3 @@ def jsonDefault(object):
 
 if __name__ == '__main__':
     sys.exit(main())
-#get page html
-#look for series link title
-#grab table under it
-#go row by row where first column is name and second is links
-#if row has no "title" then stick to the previous. Column is link referring to previous
-#do that for each title link
