@@ -14,8 +14,9 @@ class Series:
         return temp
 
 class Song:
-    def __init__(self, title,linkTitles,links,episodes,notes): #(string, array, array, string, string)
+    def __init__(self, title,type,linkTitles,links,episodes,notes): #(string, array, array, string, string)
         self.title = title
+        self.type = type
         self.linkT = linkTitles
         self.links = links
         self.eps = episodes
@@ -24,6 +25,7 @@ class Song:
     def content(self):
         temp = []
         temp.append(self.title)
+        temp.append(self.type)
         temp.append(self.linkT)
         temp.append(self.links)
         temp.append(self.eps)

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys,requests as rq, series as sr, json
 from bs4 import BeautifulSoup
 
@@ -17,9 +18,9 @@ def getHTML(url):
         url = "https://www.reddit.com/r/animethemes/wiki/year_index"
 
     headers = {
-        "User-Agent": "AniThemes 1.1",
+        "User-Agent": "AniThemes 1.2",
     }
-    r = rq.get(url, headers={"User-Agent": "aniThemes 1.0"})
+    r = rq.get(url, headers=headers)
     return r.text
 
 def getLinks():
@@ -66,8 +67,9 @@ def parseSeries(htmlArr):
             seriesList.append(sr.Series(title,altTitle,year,songs))
     return seriesList
 
-def parseTable(table): #This code is horrible...
+def parseTable(table):
     title = ""
+    type = ""
     episodes = ""
     notes = ""
     links = []
@@ -78,13 +80,22 @@ def parseTable(table): #This code is horrible...
         if len(columns)>1: #avoid the empty row (the header row)
             if len(columns[0].contents)>=1: #if the theme title exists
                 if title!="":
-                    songs.append(sr.Song(title,linkTitles,links,episodes,notes))
+                    songs.append(sr.Song(title,type,linkTitles,links,episodes,notes))
                     title = ""
+                    type = ""
                     episodes = ""
                     notes = ""
                     links = []
                     linkTitles = []
-                title = columns[0].contents[0]
+                tempTitle = columns[0].contents[0].split("\"")
+                if len(tempTitle)==1:
+                    tempTitle = columns[0].contents[0].split("”")
+                print(columns[0].contents[0])
+                type = tempTitle[0]
+                if len(tempTitle)==1:
+                    title = "MV"
+                else:
+                    title = tempTitle[1]
             themeLink = columns[1].find('a', href=True)
             if themeLink!=None: #error check because of literally one instance in the data
                 links.append(columns[1].find('a', href=True)['href'])
@@ -99,7 +110,7 @@ def parseTable(table): #This code is horrible...
                     #print("Hit that one improperly formatted box in Mob Psycho 100, year 2016")
                     print("Hit an improperly formatted box.")
 
-    songs.append(sr.Song(title, linkTitles, links, episodes, notes))
+    songs.append(sr.Song(title, type, linkTitles, links, episodes, notes))
     return songs
 
 #Creates organized json database
